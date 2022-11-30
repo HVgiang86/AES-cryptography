@@ -1,7 +1,6 @@
 package com.vcs.aescryptography
 
 import android.os.Bundle
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.security.crypto.EncryptedFile
 import androidx.security.crypto.MasterKeys
@@ -10,6 +9,7 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
+import java.io.FileOutputStream
 import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
@@ -27,9 +27,14 @@ class MainActivity : AppCompatActivity() {
         val mainKeyAlias = MasterKeys.getOrCreate(keyGenParameterSpec)
 
         val file = File(filesDir.path + "/sampleFile.jpg")
-        Log.d(TAG,"file dir: ${filesDir.path}")
-        val encryptedFileName = "encryptedFile.bin"
+        val outputFile = File(filesDir.path + "/outputFile.jpg")
+        val encryptedFileName = "encryptedFile.jpg"
+
         val fileToWrite = File(filesDir.path, encryptedFileName)
+        if (fileToWrite.exists()) {
+            fileToWrite.delete()
+        }
+
         val encryptedFile = EncryptedFile.Builder(
             fileToWrite,
             applicationContext,
@@ -38,23 +43,29 @@ class MainActivity : AppCompatActivity() {
         ).build()
 
         try {
-            val readingByteArray = ByteArray(8192)
+
             val fis = FileInputStream(file)
             val bis = BufferedInputStream(fis)
 
-            encryptedFile.openFileOutput()
-            val bos = BufferedOutputStream(encryptedFile.openFileOutput())
-            bos.flush()
+            val readingByteArray = ByteArray(file.length().toInt())
 
-            do {
-                bis.read(readingByteArray)
-                Log.d(TAG,"byte array: $readingByteArray")
-                bos.write(readingByteArray)
-
-            } while (bis.available() != 0)
-
-            bos.close()
+            bis.read(readingByteArray)
             bis.close()
+            encryptedFile.openFileOutput().apply {
+                write(readingByteArray)
+                flush()
+                close()
+            }
+
+            val inputStream = encryptedFile.openFileInput()
+            inputStream.read(readingByteArray)
+
+            val fos = FileOutputStream(outputFile)
+            val bos = BufferedOutputStream(fos)
+
+            bos.write(readingByteArray)
+            bos.close()
+
         } catch (e: IOException) {
             e.printStackTrace()
         } catch (e: FileNotFoundException) {
